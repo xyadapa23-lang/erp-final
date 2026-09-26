@@ -1,3 +1,54 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";import {createClient} from "@/lib/supabase/client";import Link from "next/link";import {useRouter} from "next/navigation";
-export default function POS(){const supabase=createClient();const router=useRouter();const [products,setProducts]=useState<any[]>([]),[cart,setCart]=useState<any[]>([]),[q,setQ]=useState(""),[message,setMessage]=useState(""),[lastSale,setLastSale]=useState<number|null>(null);useEffect(()=>{supabase.auth.getUser().then(({data})=>{if(!data.user){router.replace("/login");return}supabase.from("products").select("id,sku,name,selling_price,current_stock").eq("is_active",true).order("name").then(({data})=>setProducts(data??[]))})},[]);const filtered=useMemo(()=>products.filter(p=>(p.name+" "+p.sku+" "+(p.barcode??"")).toLowerCase().includes(q.toLowerCase())),[products,q]);const total=cart.reduce((s,i)=>s+i.qty*i.price,0);function add(p:any){setCart(c=>{const x=c.find(i=>i.id===p.id);if(x)return c.map(i=>i.id===p.id?{...i,qty:Math.min(i.qty+1,Number(p.current_stock))}:i);return [...c,{id:p.id,name:p.name,sku:p.sku,qty:1,price:Number(p.selling_price)}]})}function change(id:number,qty:number){setCart(c=>c.map(i=>i.id===id?{...i,qty:Math.max(1,qty)}:i))}async function checkout(){setMessage("");if(!cart.length)return setMessage("Keranjang masih kosong.");const {data:{user}}=await supabase.auth.getUser();if(!user)return;const {data:id,error}=await supabase.rpc("create_sale_transaction",{p_customer_id:null,p_payment_method:"cash",p_discount:0,p_items:cart.map(i=>({product_id:i.id,qty:i.qty,unit_price:i.price,discount:0}))});if(error)return setMessage(error.message);setLastSale(id?Number(id):null);setMessage(`Transaksi berhasil${id?` #${id}`:""}.`);setCart([]);const {data}=await supabase.from("products").select("id,sku,name,selling_price,current_stock,min_stock,barcode").eq("is_active",true).order("name");setProducts(data??[])}return <div className="shell"><aside className="sidebar"><div className="brand">Pecah Belah ERP</div><nav className="nav"><Link href="/dashboard">Dashboard</Link><Link href="/pos">Kasir / POS</Link><Link href="/products">Produk & Stok</Link><Link href="/purchases">Pembelian</Link><Link href="/suppliers">Supplier</Link><Link href="/stock-opname">Stock Opname</Link><Link href="/reports">Laporan</Link></nav></aside><main className="main"><div className="topbar"><div><h1>Kasir / POS</h1><span className="muted">Penjualan cepat untuk toko</span></div><Link className="btn btn-light" href="/dashboard">Dashboard</Link></div>{message&&<p className={message.includes("berhasil")?"success":"danger"}>{message}</p>}{lastSale&&<Link className="btn btn-light" href={`/receipt/${lastSale}`}>Cetak Struk #{lastSale}</Link>}<div className="pos"><section><input className="input" placeholder="Scan barcode / cari nama / SKU..." value={q} onChange={e=>setQ(e.target.value)}/><div className="product-grid" style={{marginTop:12}}>{filtered.map(p=><button className="product-tile" key={p.id} onClick={()=>add(p)} disabled={p.current_stock<=0}><strong>{p.name}</strong><span className="muted">{p.sku}</span><div style={{marginTop:8}}>Rp {Number(p.selling_price).toLocaleString("id-ID")}</div><small className={p.current_stock<=p.min_stock?"danger":"muted"}>Stok {p.current_stock}</small></button>)}</div></section><aside className="card cart"><h2>Keranjang</h2>{cart.map(i=><div className="cart-row" key={i.id}><div><strong>{i.name}</strong><div className="muted">Rp {i.price.toLocaleString("id-ID")}</div></div><input className="input" style={{width:70}} type="number" min="1" value={i.qty} onChange={e=>change(i.id,Number(e.target.value))}/></div>)}{!cart.length&&<p className="muted">Belum ada barang.</p>}<div style={{marginTop:16}}><div className="muted">Total</div><div className="total">Rp {total.toLocaleString("id-ID")}</div><button className="btn btn-primary" style={{width:"100%",marginTop:12}} disabled={!cart.length} onClick={checkout}>Bayar Tunai</button></div></aside></div></main><nav className="mobile-nav"><Link href="/dashboard">Dashboard</Link><Link href="/pos">POS</Link><Link href="/products">Produk</Link></nav></div>}
+import {useEffect,useMemo,useState} from "react";
+import {createClient} from "@/lib/supabase/client";
+import Link from "next/link";
+import {useRouter} from "next/navigation";
+
+const money=(n:number)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);
+
+export default function POS(){
+ const supabase=createClient(),router=useRouter();
+ const [products,setProducts]=useState<any[]>([]),[customers,setCustomers]=useState<any[]>([]),[warehouse,setWarehouse]=useState<any>(null),[cart,setCart]=useState<any[]>([]);
+ const [q,setQ]=useState(""),[customerId,setCustomerId]=useState(""),[payment,setPayment]=useState("cash"),[paid,setPaid]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[result,setResult]=useState<any>(null);
+
+ async function load(){
+  const [{data:p},{data:c},{data:w}]=await Promise.all([
+   supabase.from("products").select("id,sku,barcode,name,selling_price,inventory(quantity,warehouse_id)").eq("is_active",true).order("name"),
+   supabase.from("customers").select("id,code,name").eq("is_active",true).order("name"),
+   supabase.from("warehouses").select("id,code,name").eq("code","MAIN").eq("is_active",true).single()
+  ]);
+  setProducts((p??[]).map((x:any)=>({...x,stock:(x.inventory??[]).find((i:any)=>i.warehouse_id===w?.id)?.quantity??0})));
+  setCustomers(c??[]);setWarehouse(w);
+ }
+ useEffect(()=>{supabase.auth.getUser().then(({data})=>{if(!data.user)router.replace("/login");else load()})},[]);
+ const filtered=useMemo(()=>products.filter(p=>(p.name+" "+p.sku+" "+(p.barcode??"")).toLowerCase().includes(q.toLowerCase())),[products,q]);
+ const total=cart.reduce((s,i)=>s+i.qty*i.price,0);
+ function add(p:any){setCart(c=>{const x=c.find(i=>i.id===p.id);if(x)return c.map(i=>i.id===p.id?{...i,qty:Math.min(i.qty+1,Number(p.stock))}:i);return p.stock>0?[...c,{id:p.id,name:p.name,sku:p.sku,qty:1,price:Number(p.selling_price),stock:Number(p.stock)}]:c})}
+ function change(id:string,qty:number){setCart(c=>c.map(i=>i.id===id?{...i,qty:Math.min(Math.max(1,qty),i.stock)}:i))}
+ function remove(id:string){setCart(c=>c.filter(i=>i.id!==id))}
+ async function checkout(){
+  setMessage("");setResult(null);if(!warehouse)return setMessage("Gudang utama tidak ditemukan.");if(!cart.length)return setMessage("Keranjang masih kosong.");
+  const amount=Number(paid);if(!amount||amount<total)return setMessage("Nominal pembayaran belum mencukupi.");
+  setBusy(true);
+  const {data:saleId,error:e1}=await supabase.rpc("create_sale",{p_warehouse_id:warehouse.id,p_customer_id:customerId||null,p_notes:"POS"});
+  if(e1){setMessage(e1.message);setBusy(false);return;}
+  for(const item of cart){const {error}=await supabase.rpc("add_sale_item",{p_sale_id:saleId,p_product_id:item.id,p_quantity:item.qty,p_unit_price:item.price,p_discount:0});if(error){setMessage(error.message);setBusy(false);return;}}
+  const {data:checkout,error:e2}=await supabase.rpc("checkout_sale",{p_sale_id:saleId,p_payment_amount:amount,p_payment_method:payment});
+  if(e2){setMessage(e2.message);setBusy(false);return;}
+  setResult(checkout?.[0]??checkout);setCart([]);setPaid("");setCustomerId("");setMessage("Transaksi berhasil disimpan.");await load();setBusy(false);
+ }
+ return <div className="app-shell"><aside className="sidebar"><div className="brand"><div className="brand-mark">PB</div><div><strong>Pecah Belah</strong><span>ERP System</span></div></div><div className="workspace"><span className="dot"/> POS Online</div><nav className="nav"><Link href="/dashboard">⌂ Dashboard</Link><Link href="/pos" className="active">▣ Kasir / POS</Link><Link href="/products">□ Produk & Stok</Link></nav></aside>
+ <main className="main"><header className="topbar"><div><h1>Kasir / POS</h1><p>Transaksi cepat • {warehouse?.name??"memuat gudang..."}</p></div><Link className="btn btn-light" href="/dashboard">Dashboard</Link></header>
+ {message&&<div className={"alert "+(message.includes("berhasil")?"success":"error")}>{message}</div>}
+ {result&&<div className="success-card"><div><strong>{result.invoice_no}</strong><span>Transaksi berhasil • {money(Number(result.grand_total))}</span></div><div className="change">Kembalian<br/><b>{money(Number(result.change_amount||0))}</b></div></div>}
+ <div className="pos-layout"><section className="panel catalog"><div className="catalog-head"><div><h3>Pilih Produk</h3><p>{filtered.length} produk tersedia</p></div><input className="search" placeholder="Cari nama, SKU, barcode…" value={q} onChange={e=>setQ(e.target.value)}/></div>
+ <div className="product-grid">{filtered.map(p=><button className="product-tile" key={p.id} onClick={()=>add(p)} disabled={p.stock<=0}><span className="product-code">{p.sku}</span><strong>{p.name}</strong><b>{money(Number(p.selling_price))}</b><small className={p.stock<=5?"danger":""}>Stok {p.stock}</small></button>)}</div></section>
+ <aside className="panel cart-panel"><div className="section-head"><div><h3>Keranjang</h3><p>{cart.length} jenis barang</p></div><button className="text-btn" onClick={()=>setCart([])}>Kosongkan</button></div>
+ {cart.map(i=><div className="cart-item" key={i.id}><div className="cart-info"><strong>{i.name}</strong><span>{money(i.price)}</span></div><div className="qty"><button onClick={()=>change(i.id,i.qty-1)}>−</button><b>{i.qty}</b><button onClick={()=>change(i.id,i.qty+1)}>+</button></div><button className="remove" onClick={()=>remove(i.id)}>×</button></div>)}
+ {!cart.length&&<div className="empty cart-empty">Pilih produk untuk memulai transaksi.</div>}
+ <div className="checkout"><label className="label">Customer<select className="input" value={customerId} onChange={e=>setCustomerId(e.target.value)}><option value="">Customer umum</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+ <div className="checkout-total"><span>Total</span><strong>{money(total)}</strong></div>
+ <div className="payment-row"><select className="input" value={payment} onChange={e=>setPayment(e.target.value)}><option value="cash">Tunai</option><option value="qris">QRIS</option><option value="bank_transfer">Transfer</option><option value="debit">Debit</option><option value="credit_card">Kartu Kredit</option><option value="e_wallet">E-Wallet</option></select><input className="input" type="number" min={total} placeholder="Dibayar" value={paid} onChange={e=>setPaid(e.target.value)}/></div>
+ <button className="btn btn-primary btn-large checkout-btn" disabled={busy||!cart.length}>{busy?"Memproses…":"Bayar & Selesaikan →"}</button></div>
+ </aside></div></main><nav className="mobile-nav"><Link href="/dashboard">⌂<span>Home</span></Link><Link href="/pos" className="active">▣<span>POS</span></Link><Link href="/products">□<span>Produk</span></Link></nav></div>
+}
