@@ -6,3 +6,4 @@
 .table tbody tr:hover{background:#fbfdfd}.btn-primary{box-shadow:0 5px 14px rgba(22,165,143,.18)}
 
 .pos-receipt-print{display:none}@media print{body *{visibility:hidden!important}.pos-receipt-print,.pos-receipt-print *{visibility:visible!important}.pos-receipt-print{display:grid!important;position:absolute;left:0;top:0;width:100%;min-height:100vh;background:#fff;place-items:start center}.pos-receipt-print .receipt-paper{width:80mm;padding:5mm;background:#fff;text-align:center;font-size:13px}.pos-receipt-print .receipt-line{display:flex;justify-content:space-between;gap:8px;text-align:left;margin:6px 0}.pos-receipt-print h2{margin:0 0 4px}}
+.payment-modal{width:min(460px,100%)}.payment-total,.payment-preview{display:flex;justify-content:space-between;align-items:center;padding:14px 0;margin:8px 0;border-bottom:1px solid #eef2f7}.payment-total strong{font-size:25px}.payment-preview strong{font-size:20px}.payment-amount{font-size:20px;font-weight:700;margin-top:6px}
