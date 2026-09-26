@@ -1,5 +1,40 @@
-import {createClient} from "@/lib/supabase/server";
-import {redirect} from "next/navigation";
 import Link from "next/link";
-export default async function Dashboard(){const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)redirect("/login");const [{count:products},{count:customers},{count:suppliers},{data:lowStock},{data:recent}]=await Promise.all([supabase.from("products").select("*",{count:"exact",head:true}),supabase.from("customers").select("*",{count:"exact",head:true}),supabase.from("suppliers").select("*",{count:"exact",head:true}),supabase.from("products").select("id,sku,name,current_stock,min_stock").lte("current_stock","min_stock").eq("is_active",true).order("current_stock").limit(8),supabase.from("sales").select("invoice_no,sale_date,total,status").eq("status","completed").order("sale_date",{ascending:false}).limit(8)]);return <AppShell title="Dashboard"><div className="grid cards"><div className="card"><h3>Total Produk</h3><div className="metric">{products??0}</div></div><div className="card"><h3>Pelanggan</h3><div className="metric">{customers??0}</div></div><div className="card"><h3>Supplier</h3><div className="metric">{suppliers??0}</div></div><div className="card"><h3>Penjualan</h3><div className="metric"><Link href="/pos" style={{color:"inherit"}}>Buka POS →</Link></div></div></div><section className="section"><div className="section-head"><h2>Stok Menipis</h2><Link href="/products">Kelola produk</Link></div><div className="table-wrap"><table className="table"><thead><tr><th>SKU</th><th>Produk</th><th>Stok</th><th>Minimum</th></tr></thead><tbody>{(lowStock??[]).map((p:any)=><tr key={p.id}><td>{p.sku}</td><td>{p.name}</td><td className="danger">{p.current_stock}</td><td>{p.min_stock}</td></tr>)}{!(lowStock?.length)&&<tr><td colSpan={4}>Belum ada stok menipis.</td></tr>}</tbody></table></div></section><section className="section"><div className="section-head"><h2>Penjualan Terbaru</h2><Link href="/pos">Transaksi baru</Link></div><div className="table-wrap"><table className="table"><thead><tr><th>Invoice</th><th>Tanggal</th><th>Total</th><th>Status</th></tr></thead><tbody>{(recent??[]).map((s:any)=><tr key={s.invoice_no}><td>{s.invoice_no}</td><td>{new Date(s.sale_date).toLocaleString("id-ID")}</td><td>Rp {Number(s.total).toLocaleString("id-ID")}</td><td className="success">{s.status}</td></tr>)}{!(recent?.length)&&<tr><td colSpan={4}>Belum ada penjualan.</td></tr>}</tbody></table></div></section></AppShell>}
-function AppShell({children,title}:{children:React.ReactNode,title:string}){return <div className="shell"><aside className="sidebar"><div className="brand">Pecah Belah ERP</div><nav className="nav"><Link href="/dashboard">Dashboard</Link><Link href="/pos">Kasir / POS</Link><Link href="/products">Produk & Stok</Link><Link href="/purchases">Pembelian</Link><Link href="/suppliers">Supplier</Link><Link href="/stock-opname">Stock Opname</Link><Link href="/reports">Laporan</Link></nav></aside><main className="main"><div className="topbar"><div><h1 style={{margin:"0 0 4px"}}>{title}</h1><span className="muted">ERP toko • Supabase</span></div><form action="/api/signout" method="post"><button className="btn btn-light">Keluar</button></form></div>{children}</main><nav className="mobile-nav"><Link href="/dashboard">Dashboard</Link><Link href="/pos">POS</Link><Link href="/products">Produk</Link></nav></div>}
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "@/components/app-shell";
+
+const money=(n:number)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);
+
+export default async function Dashboard(){
+ const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)redirect("/login");
+ const [{count:products},{count:customers},{count:suppliers},{data:productRows},{data:recentSales}]=await Promise.all([
+  supabase.from("products").select("id",{count:"exact",head:true}).eq("is_active",true),
+  supabase.from("customers").select("id",{count:"exact",head:true}).eq("is_active",true),
+  supabase.from("suppliers").select("id",{count:"exact",head:true}).eq("is_active",true),
+  supabase.from("products").select("id,sku,name,selling_price,minimum_stock,inventory(quantity)").eq("is_active",true).order("name").limit(100),
+  supabase.from("sales").select("invoice_no,sale_date,grand_total,status").eq("status","posted").order("sale_date",{ascending:false}).limit(6)
+ ]);
+ const rows=(productRows??[]).map((p:any)=>({...p,stock:(p.inventory??[]).reduce((s:number,i:any)=>s+Number(i.quantity||0),0)}));
+ const low=rows.filter((p:any)=>p.stock<=Number(p.minimum_stock)).sort((a:any,b:any)=>a.stock-b.stock).slice(0,5);
+ const stockValue=rows.reduce((s:number,p:any)=>s+p.stock*Number(p.selling_price),0);
+ return <AppShell title="Dashboard" subtitle="Ringkasan operasional toko hari ini">
+  <section className="hero"><div><span className="eyebrow">OVERVIEW</span><h2>Operasional toko dalam satu layar.</h2><p>Pantau produk, stok, dan transaksi tanpa berpindah-pindah menu.</p></div><Link href="/pos" className="btn btn-primary">+ Transaksi Baru</Link></section>
+  <div className="kpi-grid">
+   <div className="kpi"><div className="kpi-icon blue">□</div><div><span>Total Produk</span><strong>{products??0}</strong><small>produk aktif</small></div></div>
+   <div className="kpi"><div className="kpi-icon green">♙</div><div><span>Pelanggan</span><strong>{customers??0}</strong><small>customer aktif</small></div></div>
+   <div className="kpi"><div className="kpi-icon orange">↗</div><div><span>Supplier</span><strong>{suppliers??0}</strong><small>supplier aktif</small></div></div>
+   <div className="kpi"><div className="kpi-icon purple">Rp</div><div><span>Nilai Jual Stok</span><strong>{money(stockValue)}</strong><small>berdasarkan harga jual</small></div></div>
+  </div>
+  <div className="content-grid">
+   <section className="panel"><div className="section-head"><div><h3>Stok Perlu Perhatian</h3><p>Produk di bawah batas minimum</p></div><Link href="/products">Lihat semua →</Link></div>
+    <div className="table-wrap"><table className="table"><thead><tr><th>Produk</th><th>SKU</th><th>Stok</th><th>Minimum</th></tr></thead><tbody>
+     {low.map((p:any)=><tr key={p.id}><td><strong>{p.name}</strong></td><td className="muted">{p.sku}</td><td><span className="badge danger">{p.stock} pcs</span></td><td>{p.minimum_stock}</td></tr>)}
+     {!low.length&&<tr><td colSpan={4}><div className="empty">✓ Semua stok masih aman</div></td></tr>}
+    </tbody></table></div>
+   </section>
+   <section className="panel"><div className="section-head"><div><h3>Penjualan Terbaru</h3><p>Transaksi yang sudah diposting</p></div><Link href="/pos">Buka POS →</Link></div>
+    <div className="activity-list">{(recentSales??[]).map((s:any)=><div className="activity" key={s.invoice_no}><div className="activity-dot">✓</div><div><strong>{s.invoice_no}</strong><span>{new Date(s.sale_date).toLocaleString("id-ID")}</span></div><b>{money(Number(s.grand_total))}</b></div>)}{!recentSales?.length&&<div className="empty">Belum ada penjualan.</div>}</div>
+   </section>
+  </div>
+ </AppShell>;
+}
