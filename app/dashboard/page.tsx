@@ -20,9 +20,9 @@ export default async function Dashboard(){
  return <AppShell title="Dashboard" subtitle="Ringkasan operasional toko hari ini">
   <section className="hero"><div><span className="eyebrow">OVERVIEW</span><h2>Operasional toko dalam satu layar.</h2><p>Pantau produk, stok, dan transaksi tanpa berpindah-pindah menu.</p></div><Link href="/pos" className="btn btn-primary">+ Transaksi Baru</Link></section>
   <div className="kpi-grid">
-   <div className="kpi"><div className="kpi-icon blue">□</div><div><span>Total Produk</span><strong>{products??0}</strong><small>produk aktif</small></div></div>
-   <div className="kpi"><div className="kpi-icon green">♙</div><div><span>Pelanggan</span><strong>{customers??0}</strong><small>customer aktif</small></div></div>
-   <div className="kpi"><div className="kpi-icon orange">↗</div><div><span>Supplier</span><strong>{suppliers??0}</strong><small>supplier aktif</small></div></div>
+   <div className="kpi"><div className="kpi-icon blue">P</div><div><span>Total Produk</span><strong>{products??0}</strong><small>produk aktif</small></div></div>
+   <div className="kpi"><div className="kpi-icon green">C</div><div><span>Pelanggan</span><strong>{customers??0}</strong><small>customer aktif</small></div></div>
+   <div className="kpi"><div className="kpi-icon orange">S</div><div><span>Supplier</span><strong>{suppliers??0}</strong><small>supplier aktif</small></div></div>
    <div className="kpi"><div className="kpi-icon purple">Rp</div><div><span>Nilai Jual Stok</span><strong>{money(stockValue)}</strong><small>berdasarkan harga jual</small></div></div>
   </div>
   <div className="content-grid">
