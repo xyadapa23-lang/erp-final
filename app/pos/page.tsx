@@ -9,7 +9,7 @@ const money=(n:number)=>new Intl.NumberFormat("id-ID",{style:"currency",currency
 export default function POS(){
  const supabase=createClient(),router=useRouter();
  const [products,setProducts]=useState<any[]>([]),[customers,setCustomers]=useState<any[]>([]),[warehouse,setWarehouse]=useState<any>(null),[cart,setCart]=useState<any[]>([]);
- const [q,setQ]=useState(""),[customerId,setCustomerId]=useState(""),[payment,setPayment]=useState("cash"),[paid,setPaid]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[result,setResult]=useState<any>(null),[receiptItems,setReceiptItems]=useState<any[]>([]),[receiptCustomer,setReceiptCustomer]=useState("Customer umum"),[receiptPaid,setReceiptPaid]=useState(0),[paymentOpen,setPaymentOpen]=useState(false);
+ const [q,setQ]=useState(""),[barcode,setBarcode]=useState(""),[customerId,setCustomerId]=useState(""),[payment,setPayment]=useState("cash"),[paid,setPaid]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[result,setResult]=useState<any>(null),[receiptItems,setReceiptItems]=useState<any[]>([]),[receiptCustomer,setReceiptCustomer]=useState("Customer umum"),[receiptPaid,setReceiptPaid]=useState(0),[paymentOpen,setPaymentOpen]=useState(false);
 
  async function load(){
   const [{data:p},{data:c},{data:w}]=await Promise.all([
@@ -26,6 +26,7 @@ export default function POS(){
  function add(p:any){setCart(c=>{const x=c.find(i=>i.id===p.id);if(x)return c.map(i=>i.id===p.id?{...i,qty:Math.min(i.qty+1,Number(p.stock))}:i);return p.stock>0?[...c,{id:p.id,name:p.name,sku:p.sku,qty:1,price:Number(p.selling_price),stock:Number(p.stock)}]:c})}
  function change(id:string,qty:number){setCart(c=>c.map(i=>i.id===id?{...i,qty:Math.min(Math.max(1,qty),i.stock)}:i))}
  function remove(id:string){setCart(c=>c.filter(i=>i.id!==id))}
+ function scanBarcode(value:string){const code=value.trim();if(!code)return;const p=products.find(x=>String(x.barcode||"").trim()===code||String(x.sku||"").trim()===code);if(!p){setMessage("Barcode/SKU tidak ditemukan: "+code);setBarcode("");return}if(Number(p.stock)<=0){setMessage("Stok produk habis: "+p.name);setBarcode("");return}add(p);setMessage("Produk ditambahkan: "+p.name);setBarcode("")}
  async function checkout(){
   setMessage("");setResult(null);if(!warehouse)return setMessage("Gudang utama tidak ditemukan.");if(!cart.length)return setMessage("Keranjang masih kosong.");
   const amount=Number(paid);if(!amount||amount<total)return setMessage("Nominal pembayaran belum mencukupi."); const printedItems=cart.map(i=>({...i})); const printedCustomer=customers.find(c=>c.id===customerId)?.name||"Customer umum";
@@ -41,7 +42,7 @@ export default function POS(){
  <main className="main"><header className="topbar"><div><h1>Kasir / POS</h1><p>Transaksi cepat • {warehouse?.name??"memuat gudang..."}</p></div><Link className="btn btn-light" href="/dashboard">Dashboard</Link></header>
  {message&&<div className={"alert "+(message.includes("berhasil")?"success":"error")}>{message}</div>}
  {result&&<div className="success-card"><div><strong>{result.invoice_no}</strong><span>Transaksi berhasil • {money(Number(result.grand_total))}</span></div><div className="change">Kembalian<br/><b>{money(Number(result.change_amount||0))}</b></div><button className="btn btn-primary no-print" onClick={()=>window.print()}>Cetak Struk</button></div>}
- <div className="pos-layout"><section className="panel catalog"><div className="catalog-head"><div><h3>Pilih Produk</h3><p>{filtered.length} produk tersedia</p></div><input className="search" placeholder="Cari nama, SKU, barcode…" value={q} onChange={e=>setQ(e.target.value)}/></div>
+ <div className="pos-layout"><section className="panel catalog"><div className="catalog-head"><div><h3>Pilih Produk</h3><p>{filtered.length} produk tersedia</p></div><div className="pos-search-row"><input className="search" placeholder="Cari nama, SKU, barcode…" value={q} onChange={e=>setQ(e.target.value)}/><input className="search barcode-input" autoFocus placeholder="Scan barcode…" value={barcode} onChange={e=>setBarcode(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();scanBarcode(barcode)}}}/></div></div>
  <div className="product-grid">{filtered.map(p=><button className="product-tile" key={p.id} onClick={()=>add(p)} disabled={p.stock<=0}><span className="product-code">{p.sku}</span><strong>{p.name}</strong><b>{money(Number(p.selling_price))}</b><small className={p.stock<=5?"danger":""}>Stok {p.stock}</small></button>)}</div></section>
  <aside className="panel cart-panel"><div className="section-head"><div><h3>Keranjang</h3><p>{cart.length} jenis barang</p></div><button className="text-btn" onClick={()=>setCart([])}>Kosongkan</button></div>
  {cart.map(i=><div className="cart-item" key={i.id}><div className="cart-info"><strong>{i.name}</strong><span>{money(i.price)}</span></div><div className="qty"><button onClick={()=>change(i.id,i.qty-1)}>−</button><b>{i.qty}</b><button onClick={()=>change(i.id,i.qty+1)}>+</button></div><button className="remove" onClick={()=>remove(i.id)}>×</button></div>)}
