@@ -27,7 +27,7 @@ function NavIcon({value}:{value:string}){return <span className="nav-icon" aria-
 
 export default function AppShell({title,subtitle,children}:{title:string;subtitle?:string;children:ReactNode}){
  const pathname=usePathname();const supabase=useMemo(()=>createClient(),[]);const[role,setRole]=useState<Role|null>(null);
- useEffect(()=>{let alive=true;(async()=>{const{data:{user}}=await supabase.auth.getUser();if(!user)return;const{data:p}=await supabase.from("profiles").select("role_id").eq("id",user.id).maybeSingle();if(!p?.role_id)return;const{data:r}=await supabase.from("roles").select("code").eq("id",p.role_id).maybeSingle();if(alive&&r?.code)setRole(r.code as Role)})();return()=>{alive=false}},[supabase]);
+ useEffect(()=>{let alive=true;(async()=>{const{data,error}=await supabase.rpc("current_user_role");if(alive&&!error&&data)setRole(String(data) as Role)})();return()=>{alive=false}},[supabase]);
  const visibleNav=nav.filter(item=>!role||item.roles.includes(role));
  const isActive=(href:string)=>pathname===href.split("?")[0];
  const roleLabel={owner:"Owner",admin:"Admin",cashier:"Kasir",warehouse:"Gudang",accounting:"Accounting"}[role??"owner"];
