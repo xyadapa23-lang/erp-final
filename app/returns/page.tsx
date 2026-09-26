@@ -4,7 +4,7 @@ import {createClient} from "@/lib/supabase/client";
 import {useRouter,useSearchParams} from "next/navigation";
 import Link from "next/link";
 
-export default function ReturnsPage(){
+function ReturnsPageContent(){
  const s=createClient(),router=useRouter(),params=useSearchParams();
  const [view,setView]=useState(params.get("view")==="history"?"history":"returns");
  const [type,setType]=useState<"sale"|"purchase">("sale"),[docs,setDocs]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[items,setItems]=useState<any[]>([]),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]),[loading,setLoading]=useState(false);
@@ -21,3 +21,4 @@ export default function ReturnsPage(){
  {selected&&<div className="modal"><div className="modal-card"><div className="section-head"><h2>Konfirmasi Retur {selected.invoice_no}</h2><button className="btn btn-light" onClick={()=>setSelected(null)}>Tutup</button></div><div className="table-wrap"><table className="table"><thead><tr><th>Produk</th><th>Qty</th><th>Harga</th></tr></thead><tbody>{items.map(x=><tr key={x.id}><td>{x.products?.name}<div className="muted">{x.products?.sku}</div></td><td>{x.quantity}</td><td>Rp {Number(type==="sale"?x.unit_price:x.unit_cost).toLocaleString("id-ID")}</td></tr>)}</tbody></table></div><button className="btn btn-primary" disabled={loading} onClick={postReturn}>{loading?"Memproses...":"Posting Retur & Perbarui Stok"}</button></div></div>}
  </main><nav className="mobile-nav"><Link href="/dashboard">Dashboard</Link><Link href="/pos">POS</Link><Link href="/returns">Retur</Link><Link href="/returns?view=history">Riwayat</Link></nav></div>
 }
+export default function ReturnsPage(){return <Suspense fallback={<main className="main"><p>Memuat...</p></main>}><ReturnsPageContent/></Suspense>}
