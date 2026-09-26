@@ -4,3 +4,5 @@
 .brand-mark{display:grid!important;place-items:center!important}.workspace{white-space:nowrap}
 .hero{overflow:hidden}.panel{transition:box-shadow .2s}.panel:hover{box-shadow:0 8px 24px rgba(24,40,60,.055)}
 .table tbody tr:hover{background:#fbfdfd}.btn-primary{box-shadow:0 5px 14px rgba(22,165,143,.18)}
+
+.pos-receipt-print{display:none}@media print{body *{visibility:hidden!important}.pos-receipt-print,.pos-receipt-print *{visibility:visible!important}.pos-receipt-print{display:grid!important;position:absolute;left:0;top:0;width:100%;min-height:100vh;background:#fff;place-items:start center}.pos-receipt-print .receipt-paper{width:80mm;padding:5mm;background:#fff;text-align:center;font-size:13px}.pos-receipt-print .receipt-line{display:flex;justify-content:space-between;gap:8px;text-align:left;margin:6px 0}.pos-receipt-print h2{margin:0 0 4px}}
