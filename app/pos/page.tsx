@@ -39,7 +39,7 @@ export default function POS(){
   const {data:saleId,error:e1}=await supabase.rpc("create_sale",{p_warehouse_id:warehouse.id,p_customer_id:customerId||null,p_notes:"POS"});
   if(e1){setMessage(e1.message);setBusy(false);return;}
   for(const item of cart){const {error}=await supabase.rpc("add_sale_item",{p_sale_id:saleId,p_product_id:item.id,p_quantity:item.qty,p_unit_price:item.price,p_discount:0});if(error){setMessage(error.message);setBusy(false);return;}}
-  const {data:checkout,error:e2}=await supabase.rpc("checkout_sale",{p_sale_id:saleId,p_payment_amount:amount,p_payment_method:payment});
+  const {data:checkout,error:e2}=await supabase.rpc("checkout_sale",{p_sale_id:saleId,p_payment_amount:amount,p_payment_method:payment,p_reference_no:null,p_notes:null});
   if(e2){setMessage(e2.message);setBusy(false);return;}
   setResult(checkout?.[0]??checkout);setReceiptItems(printedItems);setReceiptCustomer(printedCustomer);setReceiptPaid(amount);setCart([]);setPaid("");setCustomerId("");setMessage("Transaksi berhasil disimpan.");await load();setBusy(false);
  }
