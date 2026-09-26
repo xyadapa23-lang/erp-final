@@ -15,7 +15,7 @@ const nav:NavItem[]=[
  {href:"/stock-transfers",label:"Transfer Gudang",icon:"T",roles:["owner","admin","warehouse"]},
  {href:"/stock-opname",label:"Stock Opname",icon:"O",roles:["owner","admin","warehouse"]},
  {href:"/returns",label:"Retur",icon:"R",roles:["owner","admin","cashier","warehouse","accounting"]},
- {href:"/transactions",label:"Riwayat Transaksi",icon:"H",roles:["owner","admin","cashier","warehouse","accounting"]},
+ {href:"/returns?view=history",label:"Riwayat Transaksi",icon:"H",roles:["owner","admin","cashier","warehouse","accounting"]},
  {href:"/payments",label:"Pembayaran",icon:"$ ",roles:["owner","admin","accounting"]},
  {href:"/expenses",label:"Pengeluaran",icon:"E",roles:["owner","admin","accounting"]},
  {href:"/reports",label:"Laporan",icon:"L",roles:["owner","admin","accounting"]},
