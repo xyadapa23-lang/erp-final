@@ -9,7 +9,7 @@ const money=(n:number)=>new Intl.NumberFormat("id-ID",{style:"currency",currency
 export default function POS(){
  const supabase=createClient(),router=useRouter();
  const [products,setProducts]=useState<any[]>([]),[customers,setCustomers]=useState<any[]>([]),[warehouse,setWarehouse]=useState<any>(null),[cart,setCart]=useState<any[]>([]);
- const [q,setQ]=useState(""),[customerId,setCustomerId]=useState(""),[payment,setPayment]=useState("cash"),[paid,setPaid]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[result,setResult]=useState<any>(null);
+ const [q,setQ]=useState(""),[customerId,setCustomerId]=useState(""),[payment,setPayment]=useState("cash"),[paid,setPaid]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[result,setResult]=useState<any>(null),[receiptItems,setReceiptItems]=useState<any[]>([]),[receiptCustomer,setReceiptCustomer]=useState("Customer umum");
 
  async function load(){
   const [{data:p},{data:c},{data:w}]=await Promise.all([
@@ -28,19 +28,19 @@ export default function POS(){
  function remove(id:string){setCart(c=>c.filter(i=>i.id!==id))}
  async function checkout(){
   setMessage("");setResult(null);if(!warehouse)return setMessage("Gudang utama tidak ditemukan.");if(!cart.length)return setMessage("Keranjang masih kosong.");
-  const amount=Number(paid);if(!amount||amount<total)return setMessage("Nominal pembayaran belum mencukupi.");
+  const amount=Number(paid);if(!amount||amount<total)return setMessage("Nominal pembayaran belum mencukupi."); const printedItems=cart.map(i=>({...i})); const printedCustomer=customers.find(c=>c.id===customerId)?.name||"Customer umum";
   setBusy(true);
   const {data:saleId,error:e1}=await supabase.rpc("create_sale",{p_warehouse_id:warehouse.id,p_customer_id:customerId||null,p_notes:"POS"});
   if(e1){setMessage(e1.message);setBusy(false);return;}
   for(const item of cart){const {error}=await supabase.rpc("add_sale_item",{p_sale_id:saleId,p_product_id:item.id,p_quantity:item.qty,p_unit_price:item.price,p_discount:0});if(error){setMessage(error.message);setBusy(false);return;}}
   const {data:checkout,error:e2}=await supabase.rpc("checkout_sale",{p_sale_id:saleId,p_payment_amount:amount,p_payment_method:payment});
   if(e2){setMessage(e2.message);setBusy(false);return;}
-  setResult(checkout?.[0]??checkout);setCart([]);setPaid("");setCustomerId("");setMessage("Transaksi berhasil disimpan.");await load();setBusy(false);
+  setResult(checkout?.[0]??checkout);setReceiptItems(printedItems);setReceiptCustomer(printedCustomer);setCart([]);setPaid("");setCustomerId("");setMessage("Transaksi berhasil disimpan.");await load();setBusy(false);
  }
  return <div className="app-shell"><aside className="sidebar"><div className="brand"><div className="brand-mark">PB</div><div><strong>Pecah Belah</strong><span>ERP System</span></div></div><div className="workspace"><span className="dot"/> POS Online</div><nav className="nav"><Link href="/dashboard">⌂ Dashboard</Link><Link href="/pos" className="active">▣ Kasir / POS</Link><Link href="/products">□ Produk & Stok</Link></nav></aside>
  <main className="main"><header className="topbar"><div><h1>Kasir / POS</h1><p>Transaksi cepat • {warehouse?.name??"memuat gudang..."}</p></div><Link className="btn btn-light" href="/dashboard">Dashboard</Link></header>
  {message&&<div className={"alert "+(message.includes("berhasil")?"success":"error")}>{message}</div>}
- {result&&<div className="success-card"><div><strong>{result.invoice_no}</strong><span>Transaksi berhasil • {money(Number(result.grand_total))}</span></div><div className="change">Kembalian<br/><b>{money(Number(result.change_amount||0))}</b></div></div>}
+ {result&&<div className="success-card"><div><strong>{result.invoice_no}</strong><span>Transaksi berhasil • {money(Number(result.grand_total))}</span></div><div className="change">Kembalian<br/><b>{money(Number(result.change_amount||0))}</b></div><button className="btn btn-primary no-print" onClick={()=>window.print()}>Cetak Struk</button></div>}
  <div className="pos-layout"><section className="panel catalog"><div className="catalog-head"><div><h3>Pilih Produk</h3><p>{filtered.length} produk tersedia</p></div><input className="search" placeholder="Cari nama, SKU, barcode…" value={q} onChange={e=>setQ(e.target.value)}/></div>
  <div className="product-grid">{filtered.map(p=><button className="product-tile" key={p.id} onClick={()=>add(p)} disabled={p.stock<=0}><span className="product-code">{p.sku}</span><strong>{p.name}</strong><b>{money(Number(p.selling_price))}</b><small className={p.stock<=5?"danger":""}>Stok {p.stock}</small></button>)}</div></section>
  <aside className="panel cart-panel"><div className="section-head"><div><h3>Keranjang</h3><p>{cart.length} jenis barang</p></div><button className="text-btn" onClick={()=>setCart([])}>Kosongkan</button></div>
@@ -50,5 +50,5 @@ export default function POS(){
  <div className="checkout-total"><span>Total</span><strong>{money(total)}</strong></div>
  <div className="payment-row"><select className="input" value={payment} onChange={e=>setPayment(e.target.value)}><option value="cash">Tunai</option><option value="qris">QRIS</option><option value="bank_transfer">Transfer</option><option value="debit">Debit</option><option value="credit_card">Kartu Kredit</option><option value="e_wallet">E-Wallet</option></select><input className="input" type="number" min={total} placeholder="Dibayar" value={paid} onChange={e=>setPaid(e.target.value)}/></div>
  <button className="btn btn-primary btn-large checkout-btn" disabled={busy||!cart.length}>{busy?"Memproses…":"Bayar & Selesaikan →"}</button></div>
- </aside></div></main><nav className="mobile-nav"><Link href="/dashboard">⌂<span>Home</span></Link><Link href="/pos" className="active">▣<span>POS</span></Link><Link href="/products">□<span>Produk</span></Link></nav></div>
+ </aside></div><div className="pos-receipt-print"><div className="receipt-paper"><h2>PECAH BELAH</h2><div>NOTA PENJUALAN</div><strong>{result?.invoice_no}</strong><hr/><div className="receipt-line"><span>Customer</span><span>{receiptCustomer}</span></div><div className="receipt-line"><span>Tanggal</span><span>{result?.sale_date?new Date(result.sale_date).toLocaleString("id-ID"):new Date().toLocaleString("id-ID")}</span></div><hr/>{receiptItems.map(i=><div key={i.id} style={{textAlign:"left",margin:"8px 0"}}><strong>{i.name}</strong><div className="receipt-line"><span>{i.qty} × {money(i.price)}</span><span>{money(i.qty*i.price)}</span></div></div>)}<hr/><div className="receipt-line"><strong>Total</strong><strong>{money(Number(result?.grand_total||total))}</strong></div><div className="receipt-line"><span>Dibayar</span><span>{money(Number(paid||0))}</span></div><div className="receipt-line"><strong>Kembalian</strong><strong>{money(Number(result?.change_amount||0))}</strong></div><p>Terima kasih</p></div></div></main><nav className="mobile-nav"><Link href="/dashboard">⌂<span>Home</span></Link><Link href="/pos" className="active">▣<span>POS</span></Link><Link href="/products">□<span>Produk</span></Link></nav></div>
 }
