@@ -2,17 +2,17 @@
 import Link from "next/link";import{usePathname}from"next/navigation";import{ReactNode}from"react";
 
 const nav=[
- {href:"/dashboard",label:"Dashboard",icon:"⌂"},
- {href:"/pos",label:"Kasir / POS",icon:"▣"},
- {href:"/products",label:"Produk & Stok",icon:"□"},
- {href:"/purchases",label:"Pembelian",icon:"↓"},
- {href:"/suppliers",label:"Supplier",icon:"•"},
- {href:"/customers",label:"Customer",icon:"•"},
- {href:"/stock-transfers",label:"Transfer Gudang",icon:"⇄"},
- {href:"/stock-opname",label:"Stock Opname",icon:"◇"},
- {href:"/returns",label:"Retur",icon:"↩"},
- {href:"/returns?view=history",label:"Riwayat Transaksi",icon:"▤"},
- {href:"/reports",label:"Laporan",icon:"▥"}
+ {href:"/dashboard",label:"Dashboard",icon:"D"},
+ {href:"/pos",label:"Kasir / POS",icon:"K"},
+ {href:"/products",label:"Produk & Stok",icon:"P"},
+ {href:"/purchases",label:"Pembelian",icon:"B"},
+ {href:"/suppliers",label:"Supplier",icon:"S"},
+ {href:"/customers",label:"Customer",icon:"C"},
+ {href:"/stock-transfers",label:"Transfer Gudang",icon:"T"},
+ {href:"/stock-opname",label:"Stock Opname",icon:"O"},
+ {href:"/returns",label:"Retur",icon:"R"},
+ {href:"/returns?view=history",label:"Riwayat Transaksi",icon:"H"},
+ {href:"/reports",label:"Laporan",icon:"L"}
 ];
 
 function NavIcon({value}:{value:string}){return <span className="nav-icon" aria-hidden="true">{value}</span>}
