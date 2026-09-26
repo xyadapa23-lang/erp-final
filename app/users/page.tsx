@@ -3,7 +3,7 @@ import {useEffect,useMemo,useState} from "react";
 import {createClient} from "@/lib/supabase/client";
 
 type Role={id:string;code:string;name:string};
-type Profile={id:string;full_name:string|null;email:string|null;role_id:string|null;is_active:boolean};
+type Profile={id:string;full_name:string|null;phone:string|null;role_id:string|null;is_active:boolean};
 const labels:Record<string,string>={owner:"Owner",admin:"Admin",cashier:"Kasir",warehouse:"Gudang",accounting:"Accounting"};
 
 export default function Users(){
@@ -13,7 +13,7 @@ export default function Users(){
   setLoading(true);
   const [{data:me},{data:p,error:pe},{data:r,error:re}]=await Promise.all([
    supabase.rpc("current_user_role"),
-   supabase.from("profiles").select("id,full_name,email,role_id,is_active").order("full_name"),
+   supabase.from("profiles").select("id,full_name,phone,role_id,is_active").order("full_name"),
    supabase.from("roles").select("id,code,name").order("name")
   ]);
   if(me)setCurrentRole(String(me));
@@ -37,8 +37,8 @@ export default function Users(){
   {msg&&<p className={msg.startsWith("Gagal")?"danger":"success"}>{msg}</p>}
   <div className="cards">{counts.map(r=><div className="card" key={r.id}><span className="muted">{labels[r.code]??r.name}</span><strong>{r.count}</strong><small>pengguna</small></div>)}</div>
   <div className="card"><div className="section-head"><div><h2>Daftar Pengguna</h2><p className="muted">Perubahan role berlaku untuk hak akses aplikasi dan database.</p></div></div>
-   {loading?<p>Memuat pengguna...</p>:<div className="table-wrap"><table className="table"><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
-    {profiles.map(p=>{const role=p.role_id?roleMap[p.role_id]:undefined;return <tr key={p.id}><td><strong>{p.full_name||"Tanpa nama"}</strong></td><td>{p.email||"-"}</td>
+   {loading?<p>Memuat pengguna...</p>:<div className="table-wrap"><table className="table"><thead><tr><th>Nama</th><th>Telepon</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+    {profiles.map(p=>{const role=p.role_id?roleMap[p.role_id]:undefined;return <tr key={p.id}><td><strong>{p.full_name||"Tanpa nama"}</strong></td><td>{p.phone||"-"}</td>
      <td><select className="input" value={p.role_id||""} disabled={saving===p.id} onChange={e=>updateUser(p.id,{role_id:e.target.value||null})}><option value="">Belum ada role</option>{roles.map(r=><option key={r.id} value={r.id}>{labels[r.code]??r.name}</option>)}</select></td>
      <td><span className={p.is_active?"success":"danger"}>{p.is_active?"Aktif":"Nonaktif"}</span></td>
      <td><button className="btn btn-light" disabled={saving===p.id} onClick={()=>updateUser(p.id,{is_active:!p.is_active})}>{saving===p.id?"Menyimpan...":p.is_active?"Nonaktifkan":"Aktifkan"}</button></td>
